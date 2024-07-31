@@ -1,0 +1,41 @@
+N INIT INFO
+# Provides:          lvgl_startup
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start /root/demo at boot time
+# Description:       Enable service provided by /root/demo.
+### END INIT INFO
+
+case "$1" in
+  start)
+    echo "Starting lvgl_startup"
+    dropbear -E &
+    /root/demo &
+    ;;
+  stop)
+    echo "Stopping lvgl_startup"
+    killall dropbear
+    killall -f /root/demo
+    ;;
+  restart)
+    echo "Restarting lvgl_startup"
+    killall -f /root/demo
+    /root/demo &
+    ;;
+  status)
+    if pgrep -f /root/demo > /dev/null
+    then
+      echo "lvgl_startup is running"
+    else
+      echo "lvgl_startup is not running"
+    fi
+    ;;
+  *)
+    echo "Usage: /etc/init.d/S60lvgl_startup {start|stop|restart|status}"
+    exit 1
+    ;;
+esac
+
+exit 0
