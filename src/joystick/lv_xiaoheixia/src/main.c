@@ -30,6 +30,10 @@ lv_ui guider_ui;
 char server_URL[1024]; // 服务器地址+端口号
 double eps = 0.2, cx = 10, cy = 5, cz = 5, ca = 5,rot_scale = 5; // 灵敏度及中央忽略区
 int batt = -1, key = 0, r_cnt = 0, rot = 0;
+
+//摇杆量化值
+double xx, yy, zz, aa;
+
 // 打开设备
 int open_device() {
     int fd = open(DEVICE_PATH, O_WRONLY);
@@ -65,7 +69,7 @@ void control_beeper(int fd, int frequency, int duration_ms) {
 void* joystick_thread(void* arg) {
     FILE *fp;
     int b, c, z, a, y, x;
-    double xx, yy, zz, aa;
+    
 
     while(1) {
         // 读取摇杆模拟量
@@ -96,10 +100,6 @@ void* joystick_thread(void* arg) {
         lv_bar_set_value(guider_ui.screen_bar_z, zz, LV_ANIM_OFF); 
         lv_bar_set_value(guider_ui.screen_bar_a, aa, LV_ANIM_OFF); 
         lv_bar_set_value(guider_ui.screen_bar_r, rot, LV_ANIM_OFF);
-        // Push至服务器
-        char tbf[1024];
-        sprintf(tbf, "wget -q -O - \"http://%s/upload?x=%lf&y=%lf&a=%lf&z=%lf&rot=%d&key=%d\"", server_URL, xx, yy, aa, zz, rot, key);
-        system(tbf);
 
         usleep(5000);
     }
@@ -213,6 +213,18 @@ void* event_thread(void* arg) {
     return NULL;
 }
 
+void* push_to_server(void *arg){
+    // Push至服务器
+    char tbf[1024];
+    while (1){
+        sprintf(tbf, "wget -q -O - \"http://%s/upload?x=%lf&y=%lf&a=%lf&z=%lf&rot=%d&key=%d\"", server_URL, xx, yy, aa, zz, rot, key);
+        int r_code = system(tbf);
+        if (r_code < 0)
+            lv_label_set_text(guider_ui.screen_label_log,"Connection Failed.");
+        usleep(5000);
+    }
+}
+
 int main(void) {
     lv_init();
     fbdev_init();
@@ -271,9 +283,10 @@ int main(void) {
     control_beeper(fd, 0, 0);
     close_device(fd);
 
-    pthread_t thread1, thread2;
+    pthread_t thread1, thread2, thread3;
     pthread_create(&thread1, NULL, joystick_thread, NULL);
     pthread_create(&thread2, NULL, event_thread, NULL);
+    pthread_create(&thread3, NULL, push_to_server, NULL);
 
     // 主循环
     while(1) {
@@ -283,6 +296,7 @@ int main(void) {
 
     pthread_join(thread1, NULL);
     pthread_join(thread2, NULL);
+    pthread_join(thread3, NULL);
 
     return 0;
 }
