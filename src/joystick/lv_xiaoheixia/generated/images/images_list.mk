@@ -1,1 +1,1 @@
-GEN_CSRCS += 
+GEN_CSRCS += _26184850_alpha_20x20.c
